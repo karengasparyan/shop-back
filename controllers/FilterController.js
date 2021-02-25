@@ -42,7 +42,6 @@ class FilterController {
   static getSidebarList = async (req, res, next) => {
     try {
       await validate(req.query, {
-        page: 'numeric',
         attr: 'array',
         'attr.*': 'string',
       });
