@@ -1,17 +1,4 @@
-DB_NAME=shop
-DB_USER=root
-DB_PASSWORD=Hamadzaynagir1!
-DB_HOST=localhost
-DB_PORT=3306
-
-USER_NAME=admin
-PASSWORD=admin
-USER_ID=999999~!@$%^&*((((((((((()_+sdf657489410199##
-
-JWT_SECRET=Q@$%^&H(*J)IKO_<P>sdasd~!@$%^&*((((((((((()_+sdf65748941###
-
-MAIL_FROM='"Shop" <karen90@mail.ru>'
-MAIL_HOST=smtp.mail.ru
-MAIL_PORT=465
-MAIL_USER=karen90
-MAIL_PASSWORD=094846148mail
+node_modules
+.env
+.idea
+.gitignore
