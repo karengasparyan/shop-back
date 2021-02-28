@@ -1,7 +1,7 @@
 import HttpError from 'http-errors';
 import fs from 'fs';
 import path from 'path';
-import {v4 as uuid} from 'uuid';
+import { v4 as uuid } from 'uuid';
 import _ from 'lodash';
 import Promise from 'bluebird';
 
@@ -20,12 +20,8 @@ class ProductsController {
         s: 'string',
       });
 
-      let {query = '', cardIds} = req.query;
-      if (query) {
-        query = JSON.parse(query)
-      }
-
-      const {s, page = 1, price, ...a} = query
+      let { query } = req;
+      const { s, page = 1, max = 0, min = 0, ...a } = query
 
       let limit = 5;
       const offset = (page - 1) * limit;
@@ -39,18 +35,18 @@ class ProductsController {
         search.forEach(str => {
           where.$and.push({
             $or: [
-              {name: {$like: `%${str}%`}},
-              {description: {$like: `%${str}%`}},
-              {shortDescription: {$like: `%${str}%`}},
-              {'$attribute.attributeValue$': {$like: `%${str}%`}},
-              {'$attribute.attributeKey$': {$like: `%${str}%`}},
+              { name: { $like: `%${str}%` } },
+              { description: { $like: `%${str}%` } },
+              { shortDescription: { $like: `%${str}%` } },
+              { '$attribute.attributeValue$': { $like: `%${str}%` } },
+              { '$attribute.attributeKey$': { $like: `%${str}%` } },
             ]
           });
         })
       }
-      if (price) {
-        where.$and.push({price: {$gte: price[0]}})
-        where.$and.push({price: {$lte: price[1]}})
+      if (min || max) {
+        where.$and.push({ price: { $gte: min } })
+        where.$and.push({ price: { $lte: max } })
       }
 
       if (a) {
@@ -59,10 +55,10 @@ class ProductsController {
             if (!_.isArray(a[key])) {
               a[key] = [a[key]]
             }
-            where.$and = [
-              {'$attribute.attributeKey$': key},
-              {'$attribute.attributeValue$': a[key]}
-            ]
+            where.$and.push([
+              { '$attribute.attributeKey$': key },
+              { '$attribute.attributeValue$': { $in: a[key] } }
+            ])
           }
         }
       }
@@ -81,26 +77,16 @@ class ProductsController {
         order: [
           ['id', 'DESC'],
         ],
+        group: ['id']
       });
 
-      const productCount = await Products.count({
-        where,
-        include: {
-          model: ProductAttributes,
-          as: 'attribute',
-          required: false,
-          attributes: [],
-        },
-      });
-
-      products = _.uniqBy(products, 'id')
 
       const attributes = await ProductAttributes.findAll({
-        where: {productId: {$in: products.map(p => p.id)}}
+        where: { productId: { $in: products.map(p => p.id) } }
       });
 
       const images = await ProductImages.findAll({
-        where: {productId: {$in: products.map(p => p.id)}}
+        where: { productId: { $in: products.map(p => p.id) } }
       });
 
       products = products.map(p => {
@@ -111,10 +97,21 @@ class ProductsController {
         return p
       });
 
+      const productCount = await Products.count({
+        where,
+        include: {
+          model: ProductAttributes,
+          as: 'attribute',
+          required: false,
+          attributes: [],
+        },
+        group: ['id']
+      });
+
       res.send({
         status: 'ok',
         products,
-        productCount: Math.round(productCount / limit) + 1
+        productCount: Math.ceil(productCount.length / limit)
       });
     } catch (e) {
       next(e);
@@ -126,7 +123,7 @@ class ProductsController {
       await validate(req.body, {
         productId: 'required|numeric',
       });
-      const {productId} = req.body;
+      const { productId } = req.body;
 
       if (!productId) {
         throw HttpError(422, 'product does not exist')
@@ -198,7 +195,7 @@ class ProductsController {
         throw HttpError(422, 'Please edit qty. if the status is selected, then there must be at least one product')
       }
 
-      const maxEquipmentAttributes = await ProductAttributes.findAll({where: {attributeKey: 'секция комплектация'}})
+      const maxEquipmentAttributes = await ProductAttributes.findAll({ where: { attributeKey: 'секция комплектация' } })
 
       if (maxEquipmentAttributes.length > 3) {
         throw HttpError(422, 'maximum 3 attributes allowed комплектация')
@@ -225,7 +222,7 @@ class ProductsController {
         await ProductRelations.destroy({
           where: {
             productId: product.id,
-            relatedProductId: {$in: deletedRelations}
+            relatedProductId: { $in: deletedRelations }
           }
         })
       }
@@ -262,7 +259,7 @@ class ProductsController {
         productId: 'required|numeric',
       });
 
-      const {productId} = req.body;
+      const { productId } = req.body;
 
       await validate(req.body, {
         name: 'required|string',
@@ -324,7 +321,7 @@ class ProductsController {
         throw HttpError(422, 'Please edit qty. if the status is selected, then there must be at least one product')
       }
 
-      const maxEquipmentAttributes = await ProductAttributes.findAll({where: {attributeKey: 'секция комплектация'}})
+      const maxEquipmentAttributes = await ProductAttributes.findAll({ where: { attributeKey: 'секция комплектация' } })
 
 
       if (maxEquipmentAttributes.length > 3) {
@@ -336,7 +333,7 @@ class ProductsController {
         await ProductAttributes.destroy({
           where: {
             productId,
-            attributeKey: {$in: deletedAttributes.map((a) => a.attributeKey)}
+            attributeKey: { $in: deletedAttributes.map((a) => a.attributeKey) }
           }
         })
       }
@@ -368,7 +365,7 @@ class ProductsController {
         await ProductRelations.destroy({
           where: {
             productId,
-            relatedProductId: {$in: deletedRelations}
+            relatedProductId: { $in: deletedRelations }
           }
         })
       }
@@ -406,16 +403,16 @@ class ProductsController {
         'productsId.*': 'numeric',
       });
 
-      const {productsId} = req.body;
+      const { productsId } = req.body;
 
       if (!productsId || _.isEmpty(productsId)) {
         throw HttpError(422, 'product does not exist')
       }
 
-      await Products.destroy({where: {id: productsId}})
-      await ProductAttributes.destroy({where: {productsId}})
-      await ProductImages.destroy({where: {productsId}})
-      await ProductRelations.destroy({where: {productsId}})
+      await Products.destroy({ where: { id: productsId } })
+      await ProductAttributes.destroy({ where: { productsId } })
+      await ProductImages.destroy({ where: { productsId } })
+      await ProductRelations.destroy({ where: { productsId } })
 
       productsId.map(productId => {
         const direction = path.join(__dirname, `../public/productImage/${productId}`)
@@ -439,8 +436,8 @@ class ProductsController {
         'images.*': 'numeric',
       });
 
-      const {files} = req;
-      const {productId, images = []} = req.body;
+      const { files } = req;
+      const { productId, images = [] } = req.body;
 
       const product = await Products.findByPk(productId, {
         include: [{
@@ -459,7 +456,7 @@ class ProductsController {
       };
 
       files.forEach(file => {
-        const {mimetype} = file;
+        const { mimetype } = file;
         if (!allowTypes[mimetype]) {
           throw HttpError(422, 'invalid file type');
         }
@@ -467,22 +464,22 @@ class ProductsController {
 
       const direction = path.join(__dirname, `../public/productImage/${productId}`);
       if (!fs.existsSync(direction)) {
-        fs.mkdirSync(direction, {recursive: true});
+        fs.mkdirSync(direction, { recursive: true });
       }
 
       await Promise.map(files, async (file) => {
         const ext = allowTypes[file.mimetype];
         const fileName = `image_${uuid()}${ext}`;
         fs.writeFileSync(path.join(direction, fileName), file.buffer);
-        await ProductImages.create({productId, path: fileName,})
+        await ProductImages.create({ productId, path: fileName, })
       })
-      const deletedImages = _.differenceBy(product.images, images.map(id => ({id: +id})), 'id');
+      const deletedImages = _.differenceBy(product.images, images.map(id => ({ id: +id })), 'id');
 
       if (!_.isEmpty(deletedImages)) {
 
         await ProductImages.destroy({
           where: {
-            id: {$in: deletedImages.map(i => i.id)}
+            id: { $in: deletedImages.map(i => i.id) }
           }
         })
         deletedImages.forEach((image) => {
@@ -490,7 +487,7 @@ class ProductsController {
         })
       }
       const updatedImages = await ProductImages.findAll({
-        where: {productId}
+        where: { productId }
       });
       // await transaction.commit();
       res.json({
@@ -509,8 +506,8 @@ class ProductsController {
         images: 'json',
       });
 
-      const {files} = req;
-      let {images = ''} = req.body;
+      const { files } = req;
+      let { images = '' } = req.body;
 
       const allowTypes = {
         'image/jpeg': '.jpg',
@@ -519,7 +516,7 @@ class ProductsController {
       };
 
       files.forEach(file => {
-        const {mimetype} = file;
+        const { mimetype } = file;
         if (!allowTypes[mimetype]) {
           throw HttpError(422, 'invalid file type');
         }
@@ -528,14 +525,14 @@ class ProductsController {
       const direction = path.join(__dirname, `../public/sliderImages`);
 
       if (!fs.existsSync(direction)) {
-        fs.mkdirSync(direction, {recursive: true});
+        fs.mkdirSync(direction, { recursive: true });
       }
 
       await Promise.map(files, async (file) => {
         const ext = allowTypes[file.mimetype];
         const fileName = `image_${uuid()}${ext}`;
         fs.writeFileSync(path.join(direction, fileName), file.buffer);
-        await SliderImages.create({path: fileName})
+        await SliderImages.create({ path: fileName })
       })
 
       images = JSON.parse(images)
@@ -547,7 +544,7 @@ class ProductsController {
 
         await SliderImages.destroy({
           where: {
-            id: {$in: images.map(img => img.id)}
+            id: { $in: images.map(img => img.id) }
           }
         })
       }
@@ -602,9 +599,9 @@ class ProductsController {
 
   static getCatalogList = async (req, res, next) => {
     try {
-      let catalog = await ProductAttributes.findAll({where: {attributeKey: 'каталог'}})
+      let catalog = await ProductAttributes.findAll({ where: { attributeKey: 'каталог' } })
 
-      catalog = _.uniqBy(catalog,'attributeValue')
+      catalog = _.uniqBy(catalog, 'attributeValue')
 
       res.json({
         status: 'ok',

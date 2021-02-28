@@ -4,12 +4,12 @@ import path from 'path';
 import {v4 as uuid} from 'uuid';
 import _ from 'lodash';
 import Promise from 'bluebird';
-import db from '../services/db';
 import Mail from '../services/Mail';
 import {
   Products, ProductAttributes, ProductImages, SidebarFilter, ProductRelations, Orders,
 } from '../models';
 import validate from '../services/validate';
+import Handlebars from "handlebars";
 
 class CartController {
 
@@ -126,55 +126,51 @@ class CartController {
         })
       }
 
-      const {messageId} = await Mail.send(['astghik.mirijanyan@gmail.com', email], 'Order',
-        `
-              <div>
-                <div >
-                  <h2>Реквизиты</h2>
-                  <div>
-                    <div>
-                      <h3>Имя Фамилия</h3>
-                    <h4>${name}</h4>
-                    </div>
-                    <div>
-                      <h3>Город</h3>
-                      <h4>${town}</h4>
-                    </div>
-                    <div>
-                      <h3>Адрес доставки</h3>
-                      <h4>${address}</h4>
-                    </div>
-                    <div>
-                      <h3>Телефон</h3>
-                     <h4>${phone}</h4>
-                    </div>
-                    <div>
-                      <h3>Адрес электронной почты</h3>
-                      <h4>${email}</h4>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div>
-                    <h3>Заказы</h3>
-                    <div>
-                      <span style="font-size: 15px;">
-                        ${data.map((p => p.name + '  ' + 'x  ' + p.saleCount + '  '))}
-                      </span>
-                      <div style="display: flex;">
-                        <span style="font-size: 16px;">Обшая сумма:&nbsp;</span>
-                        <span style="color: #ff3535;font-size: 16px;">₽&nbsp;</span>
-                        <span style="color: #ff3535;font-size: 16px;"> ${total}</span>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-`)
-      ;
+      const EmailTemplate = Handlebars.compile(`
+        <h1 style="margin: 10px; color: #535353;">Реквизиты</h1>
+          <table>
+            <tr>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Имя, фамилия</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Город доставки</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Адрес доставки</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Телефонний номер</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Электронная почта</th>
+            </tr>
+            <tr>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">${name}</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">${town}</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">${address}</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">${phone}</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">${email}</th>
+            </tr>
+           <h1 style="margin: 10px;color: #535353;">Заказы</h1>
+           <tr>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Название товара</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Число заказов</th>
+              <th style="color: #535353; font-size: 20px; padding: 5px;">Стоимость товара</th>
+            </tr>
+            {{#each data}}
+            <tr>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">{{name}}</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">{{saleCount}}&nbsp;штук</th>
+              <th style="color: #535353; font-size: 17px; padding: 5px;">₽&nbsp;{{salePrice}}</th>
+            </tr>
+            {{/each}}
+            <tr>
+                <th style="color: #ff3535;font-size: 24px; padding: 5px 5px;margin: 5px 5px;
+                font-weight: bold;">Обшая сумма</th>
+                <th></th>
+                <th style="color: #ff3535;font-size: 24px; padding: 5px 5px;margin: 5px 5px;
+                font-weight: bold;">₽&nbsp;${total}</th>
+            </tr>
+          </table>        
+`);
+      const template = EmailTemplate({ data: data });
+
+      const {messageId} = await Mail.send(['astghik.mirijanyan@gmail.com', email], 'Order', template);
 
       if (!messageId) {
-        throw new HttpError(422, 'Повторите пожалуйста! Заказ не отправлено');
+        throw new HttpError(422, 'Извините! Не удалось отправить емайл на вашу электронную почту. Мы свяжутся свами!');
       }
 
       res.send({
@@ -230,7 +226,7 @@ class CartController {
         throw new HttpError(422, 'invalid order');
       }
 
-      if (order.status === 'completed'){
+      if (order.status === 'completed') {
         order.status = 'pending';
       } else {
         order.status = 'completed';
