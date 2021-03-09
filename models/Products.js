@@ -71,6 +71,16 @@ Products.init({
     allowNull: false,
     defaultValue: 0
   },
+  metaName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: ''
+  },
+  metaDescription: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: ''
+  },
 }, {
   sequelize: db,
   modelName: 'products',

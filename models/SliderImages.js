@@ -15,6 +15,18 @@ SliderImages.init({
   path: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  imageTitle: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  imageDescription: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  catalogLink: {
+    type: DataTypes.STRING,
+    allowNull: false,
   }
 }, {
   sequelize: db,
