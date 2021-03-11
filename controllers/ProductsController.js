@@ -521,8 +521,6 @@ class ProductsController {
         catalogLink: 'string',
       });
 
-      console.log(req.body)
-
       const {files} = req;
       let {images = '', imageTitle, imageDescription, catalogLink} = req.body;
 
