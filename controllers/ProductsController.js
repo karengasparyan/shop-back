@@ -516,10 +516,12 @@ class ProductsController {
     try {
       await validate(req.body, {
         images: 'json',
-        // imageTitle: 'required|string',
-        // imageDescription: 'required|string',
-        // catalogLink: 'required|string',
+        imageTitle: 'string',
+        imageDescription: 'string',
+        catalogLink: 'string',
       });
+
+      console.log(req.body)
 
       const {files} = req;
       let {images = '', imageTitle, imageDescription, catalogLink} = req.body;
@@ -581,6 +583,38 @@ class ProductsController {
     try {
 
       const sliderImages = await SliderImages.findAll();
+
+      res.json({
+        status: 'ok',
+        sliderImages,
+      });
+    } catch (e) {
+
+      next(e);
+    }
+  };
+
+  static updateSliderImagesDesc = async (req, res, next) => {
+    try {
+
+      await validate(req.body, {
+        id: 'required|numeric',
+        imageTitle: 'required|string',
+        imageDescription: 'required|string',
+        catalogLink: 'required|string',
+      });
+
+      console.log(req.body)
+
+      const {id, imageTitle, imageDescription, catalogLink} = req.body;
+
+      const sliderImages = await SliderImages.findByPk(id);
+
+      console.log(sliderImages)
+      sliderImages.imageTitle = imageTitle;
+      sliderImages.imageDescription = imageDescription;
+      sliderImages.catalogLink = catalogLink;
+      await sliderImages.save();
 
       res.json({
         status: 'ok',

@@ -27,6 +27,8 @@ router.post('/upload-sidebar-image', authorization, upload2.array('file[]'), Pro
 
 router.get('/slider-images-list', ProductsController.getSliderImages);
 
+router.post('/update-slider-image-desc',  authorization, ProductsController.updateSliderImagesDesc);
+
 router.get('/catalog-list', ProductsController.getCatalogList);
 
 
